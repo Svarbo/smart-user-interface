@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SmartUserInterface
 {
-    public class UserInterfaceScaler : MonoBehaviour
+    public class SmartCanvas : MonoBehaviour
     {
 #if UNITY_EDITOR
         private void OnValidate() =>
@@ -11,7 +11,7 @@ namespace SmartUserInterface
 
         private void AddSavedRectToChilds()
         {
-            RectTransform[] rectTransforms = gameObject.GetComponentsInChildren<RectTransform>();
+            RectTransform[] rectTransforms = gameObject.GetComponentsInChildren<RectTransform>(true);
             GameObject rectTransformObject;
             bool isContainsSmartRectTransform;
 

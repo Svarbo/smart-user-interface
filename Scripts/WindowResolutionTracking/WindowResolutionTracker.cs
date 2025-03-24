@@ -8,10 +8,12 @@ namespace SmartUserInterface
     [InitializeOnLoad]
     public class WindowResolutionTracker
     {
+        public static float PreviousResolutionQuotient;
+
         private static Vector2Int _currentResolution;
         private static Vector2Int _lastResolution;
 
-        public static event Action OnScreenAspectRatioChanged;
+        public static event Action ScreenAspectRatioChanged;
 
         private static float _currentResolutionQuotient => (float)_currentResolution.x / _currentResolution.y;
         private static float _lastResolutionQuotient => (float)_lastResolution.x / _lastResolution.y;
@@ -34,9 +36,10 @@ namespace SmartUserInterface
 
             if (_currentResolutionQuotient != _lastResolutionQuotient)
             {
+                PreviousResolutionQuotient = _lastResolutionQuotient;
                 _lastResolution = _currentResolution;
-                Debug.Log("OnScreenAspectRatioChanged");
-                OnScreenAspectRatioChanged?.Invoke();
+
+                ScreenAspectRatioChanged?.Invoke();
             }
         }
     }

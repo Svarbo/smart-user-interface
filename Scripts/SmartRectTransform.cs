@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 
 namespace SmartUserInterface
@@ -9,14 +8,11 @@ namespace SmartUserInterface
     [RequireComponent(typeof(RectTransform))]
     public class SmartRectTransform : MonoBehaviour
     {
-        private const string AspectRatiosPath = "Assets/AspectRatios.asset";
-
         [SerializeField] private AspectRatios _aspectRatios;
         [SerializeField] private RectTransform _rectTransform;
         [SerializeField] private List<SavedRect> _savedRects = new List<SavedRect>();
-        [SerializeField] private bool _wasSaved;
 
-        private SavedRect _currentRectConfig;
+        private SavedRect _rectConfig;
 
         private float _currentAspectRatioQuotient => (float)Camera.main.pixelWidth / Camera.main.pixelHeight;
         private bool _isContainsCurrentAspectRatio => _savedRects.Any(savedRect => savedRect.Quotient == _currentAspectRatioQuotient);
@@ -28,72 +24,70 @@ namespace SmartUserInterface
         private void Reset()
         {
             _rectTransform = GetComponent<RectTransform>();
+            _aspectRatios = AspectRatiosSetter.GetAspectRatios();
 
-            if (TryFindAspectRatios() == false)
-                CreateCleanAspectRatios();
+            WindowResolutionTracker.ScreenAspectRatioChanged += OnScreenAspectRatioChanged;
         }
 
-        private void OnDrawGizmos()
-        {
-            SaveCurrentRectConfig();
-
-            if (_wasSaved == false)
-            {
-                WindowResolutionTracker.OnScreenAspectRatioChanged += SetCorrectRectValues;
-                _wasSaved = true;
-            }
-        }
-
-        private bool TryFindAspectRatios()
-        {
-            string[] guids = AssetDatabase.FindAssets($"t:{nameof(AspectRatios)}");
-
-            if (guids.Length > 0)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guids[0]);
-                _aspectRatios = AssetDatabase.LoadAssetAtPath<AspectRatios>(path);
-
-                if (_aspectRatios != null)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private void CreateCleanAspectRatios()
-        {
-            _aspectRatios = ScriptableObject.CreateInstance<AspectRatios>();
-            AssetDatabase.CreateAsset(_aspectRatios, AspectRatiosPath);
-            AssetDatabase.SaveAssets();
-
-            Debug.Log($"Created new {nameof(AspectRatios)} asset");
-        }
-
-        private void SaveCurrentRectConfig()
+        public void SaveCurrentRectConfig()
         {
             if (_aspectRatios.IsContainsAspectRatio(_currentAspectRatioQuotient))
             {
                 if (_isContainsCurrentAspectRatio)
                 {
-                    _currentRectConfig = _savedRects.Where(savedRect => savedRect.Quotient == _currentAspectRatioQuotient).FirstOrDefault();
-                    _currentRectConfig.SaveData(_currentAspectRatioQuotient, _rectTransform);
+                    _rectConfig = _savedRects.Where(savedRect => savedRect.Quotient == _currentAspectRatioQuotient).FirstOrDefault();
+                    _rectConfig.SaveData(_currentAspectRatioQuotient, _rectTransform);
                 }
                 else
                 {
-                    _currentRectConfig = new SavedRect();
-                    _currentRectConfig.SaveData(_currentAspectRatioQuotient, _rectTransform);
+                    _rectConfig = new SavedRect();
+                    _rectConfig.SaveData(_currentAspectRatioQuotient, _rectTransform);
 
-                    _savedRects.Add(_currentRectConfig);
+                    _savedRects.Add(_rectConfig);
                 }
             }
             else
             {
                 Debug.LogError($"Error: An attempt to save the rect transform values to strange aspect ratio {_currentAspectRatioQuotient}!");
+                SetCorrectRectValues();
             }
         }
+
+        private void OnScreenAspectRatioChanged()
+        {
+            SavePreviousRectConfiq(WindowResolutionTracker.PreviousResolutionQuotient);
+            SetCorrectRectValues();
+        }
+
+        private void SavePreviousRectConfiq(float previousResolutionQuotient)
+        {
+            if (_aspectRatios.IsContainsAspectRatio(previousResolutionQuotient))
+            {
+                bool isContainsPreviousAspectRatio = _savedRects.Any(savedRect => savedRect.Quotient == previousResolutionQuotient);
+
+                if (isContainsPreviousAspectRatio)
+                {
+                    _rectConfig = _savedRects.Where(savedRect => savedRect.Quotient == previousResolutionQuotient).FirstOrDefault();
+                    _rectConfig.SaveData(previousResolutionQuotient, _rectTransform);
+                }
+                else
+                {
+                    _rectConfig = new SavedRect();
+                    _rectConfig.SaveData(previousResolutionQuotient, _rectTransform);
+
+                    _savedRects.Add(_rectConfig);
+                }
+            }
+            else
+            {
+                Debug.LogError($"Error: An attempt to save the rect transform values to strange aspect ratio {previousResolutionQuotient}!");
+            }
+        }
+
+
 #endif
 
-        private void SetCorrectRectValues()
+        public void SetCorrectRectValues()
         {
             SavedRect savedRect;
 
